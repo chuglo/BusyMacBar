@@ -139,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         login.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(login)
         menu.addItem(.separator())
-        menu.addItem(item("Quit BusyMac", #selector(quit)))
+        menu.addItem(item("Quit BusyMacBar", #selector(quit)))
     }
 
     private func item(_ title: String, _ action: Selector) -> NSMenuItem {
