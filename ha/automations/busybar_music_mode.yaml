@@ -1,0 +1,79 @@
+# BUSY Bar "Music mode"
+#
+# The bar has two session cards, Busy and Custom, picked with its physical
+# switch. This turns the Custom card into Music mode: starting it plays music
+# on a Home Assistant media player, pausing the session pauses the music, and
+# ending it stops the music. The Busy card is left alone.
+#
+# Needs the official BUSY Bar integration (HACS: busy-app/busy-hacs). Its
+# session state is pushed from the bar, so there is no polling delay.
+#
+# Placeholders to fill in:
+#   media_player.REPLACE_ME   - the speaker to play on
+#   REPLACE_MEDIA_ID          - what to play (playlist URI, favorite, radio URL...)
+#   REPLACE_MEDIA_TYPE        - playlist / music / favorite_item_id / ...
+# Entity ids assume the bar is named "BUSY Bar"; adjust if yours differs.
+
+alias: BUSY Bar - Music mode
+description: Play music while the BUSY Bar's Custom session runs.
+mode: queued
+triggers:
+  - trigger: state
+    entity_id: switch.busy_bar_session_custom
+    to: "on"
+    id: started
+  - trigger: state
+    entity_id: switch.busy_bar_session_custom
+    from: "on"
+    to: "off"
+    id: stopped
+  - trigger: state
+    entity_id: switch.busy_bar_session_paused
+    id: paused_changed
+conditions: []
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: started
+        sequence:
+          - action: media_player.volume_set
+            target:
+              entity_id: media_player.REPLACE_ME
+            data:
+              volume_level: 0.25
+          - action: media_player.play_media
+            target:
+              entity_id: media_player.REPLACE_ME
+            data:
+              media_content_id: REPLACE_MEDIA_ID
+              media_content_type: REPLACE_MEDIA_TYPE
+
+      - conditions:
+          - condition: trigger
+            id: stopped
+        sequence:
+          - action: media_player.media_pause
+            target:
+              entity_id: media_player.REPLACE_ME
+
+      # Pause/resume only matters while Music mode is the running session.
+      - conditions:
+          - condition: trigger
+            id: paused_changed
+          - condition: state
+            entity_id: switch.busy_bar_session_custom
+            state: "on"
+        sequence:
+          - if:
+              - condition: state
+                entity_id: switch.busy_bar_session_paused
+                state: "on"
+            then:
+              - action: media_player.media_pause
+                target:
+                  entity_id: media_player.REPLACE_ME
+            else:
+              - action: media_player.media_play
+                target:
+                  entity_id: media_player.REPLACE_ME

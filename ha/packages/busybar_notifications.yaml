@@ -1,0 +1,98 @@
+# BUSY Bar notifications: lunch and break reminders (door and calendar TBD).
+#
+# Everything goes through one script, `script.busybar_alert`, which draws a
+# message on the bar right away.
+#
+# Needs: the hass-busybar custom integration (github.com/pickerin/hass-busybar).
+# Install: put this file in <config>/packages/ and make sure configuration.yaml has
+#   homeassistant:
+#     packages: !include_dir_named packages
+#
+# Placeholders (search REPLACE): the bar's device id, the busy status sensor.
+
+script:
+  busybar_alert:
+    alias: BUSY Bar alert
+    description: Show a message on the BUSY Bar.
+    mode: parallel
+    fields:
+      text:
+        description: Message to show
+        required: true
+        selector: { text: }
+      color:
+        description: Hex color
+        default: "#FFFFFF"
+        selector: { text: }
+      seconds:
+        description: How long to show it
+        default: 30
+        selector: { number: { min: 5, max: 120, unit_of_measurement: s } }
+      sound:
+        description: Play the alert sound
+        default: true
+        selector: { boolean: }
+    sequence:
+      - action: busybar.draw_text
+        data:
+          device_id: REPLACE_bar_device_id
+          text: "{{ text }}"
+          color: "{{ color | default('#FFFFFF') }}"
+          font: normal
+          align: center
+          scroll_rate: 50
+          timeout_ms: "{{ (seconds | default(30) | int) * 1000 }}"
+      - if:
+          - condition: template
+            value_template: "{{ sound | default(true) }}"
+        then:
+          - action: busybar.play_audio
+            data:
+              device_id: REPLACE_bar_device_id
+              stock_path: alarm   # example from the integration docs; adjust if it doesn't play
+
+automation:
+  # --- Lunch ------------------------------------------------------------------
+  - alias: BUSY Bar - Time to eat
+    triggers:
+      - trigger: time
+        at: "12:30:00"
+    actions:
+      - action: script.busybar_alert
+        data:
+          text: Lunch time - go eat something
+          seconds: 60
+
+  # --- Breaks: nudge after 90 minutes of continuous busy ----------------------
+  - alias: BUSY Bar - Take a break
+    triggers:
+      - trigger: state
+        entity_id: sensor.REPLACE_busy_bar_busy_status   # shows idle/busy/timer/interval
+        to: busy
+        for: "01:30:00"
+    actions:
+      - action: script.busybar_alert
+        data:
+          text: 90 min straight - stand up, stretch
+          seconds: 60
+
+  # --- Later: front door and calendar reminders -------------------------------
+  # - alias: BUSY Bar - Someone at the door
+  #   triggers:
+  #     - trigger: state
+  #       entity_id: binary_sensor.REPLACE_doorbell
+  #       to: "on"
+  #   actions:
+  #     - action: script.busybar_alert
+  #       data: { text: "Someone's at the front door", seconds: 45 }
+  #
+  # - alias: BUSY Bar - Calendar reminders
+  #   triggers:
+  #     - trigger: calendar
+  #       event: start
+  #       entity_id: calendar.REPLACE_ME
+  #   actions:
+  #     - action: script.busybar_alert
+  #       data:
+  #         text: "{{ trigger.calendar_event.summary }}"
+  #         seconds: 60
